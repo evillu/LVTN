@@ -1,8 +1,8 @@
 close all;
 clear all;
 
-ResourcePath = 'H:\Matlab\Resource';
-Helper = 'H:\Matlab\LVTN\helper';
+ResourcePath = '.\Resource';
+Helper = '.\helper';
 addpath(ResourcePath);
 addpath(Helper);
 
