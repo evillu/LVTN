@@ -6,7 +6,7 @@ Helper = '.\helper';
 addpath(ResourcePath);
 addpath(Helper);
 
-vid = vision.VideoFileReader('street.avi');
+vid = vision.VideoFileReader('street.mp4');
 
 hFig = figure();
 while ishandle(hFig)
