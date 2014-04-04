@@ -31,8 +31,29 @@ while ishandle(hFig)
         %% Background subtraction
         [bg,bwIm] = bgSubtraction(bg,newframe);
         BW = blobEnhance(bwIm,2);
-        subplot(1,2,1),imshow(newframe);
-        subplot(1,2,2),imshow(BW);
+        [L, num] = bwlabel(BW,8);
+        
+        subplot(1,2,1),imshow(bwIm);
+        subplot(1,2,2),imshow(L);
+        
+        labelsMinMax = findBoxOfLabels(L,num);
+        for i = 1:size(labelsMinMax,1)
+            if labelsMinMax(i,1) ~= labelsMinMax(i,3)
+                x = labelsMinMax(i,2);
+                y = labelsMinMax(i,1);
+                h = labelsMinMax(i,3) - labelsMinMax(i,1);
+                w = labelsMinMax(i,4) - labelsMinMax(i,2);
+                if w ~= 0 && h ~= 0 && w*h > 150
+                    rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','b');                   
+                end
+                axis off;
+                
+                %plot::Rectangle(x, x + w, y, y + h);
+            end
+        end
+        
+        
+
         %% Draw setting
         axis off;
         pause(0.01);        
