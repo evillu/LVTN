@@ -6,7 +6,7 @@ Helper = '.\helper';
 addpath(ResourcePath);
 addpath(Helper);
 
-vid = vision.VideoFileReader('street.mp4');
+vid = vision.VideoFileReader('people.mp4');
 
 hFig = figure();
 while ishandle(hFig)
@@ -34,17 +34,21 @@ while ishandle(hFig)
         [L, num] = bwlabel(BW,8);
         
         subplot(1,2,1),imshow(bwIm);
-        subplot(1,2,2),imshow(L);
+        subplot(1,2,2),imshow(newframe);
         
-        labelsMinMax = findBoxOfLabels(L,num);
-        for i = 1:size(labelsMinMax,1)
-            if labelsMinMax(i,1) ~= labelsMinMax(i,3)
-                x = labelsMinMax(i,2);
-                y = labelsMinMax(i,1);
-                h = labelsMinMax(i,3) - labelsMinMax(i,1);
-                w = labelsMinMax(i,4) - labelsMinMax(i,2);
+        
+        labelsBox = findBoxOfLabels(L,num);
+        %disp(size(labelsBox));
+        
+        for i = 1:size(labelsBox,1)
+            %disp([ i, labelsBox(i,5)]);
+            if (labelsBox(i,1) ~= labelsBox(i,3))&& labelsBox(i,5) == 1
+                x = labelsBox(i,1);
+                y = labelsBox(i,2);
+                w = abs(labelsBox(i,3) - labelsBox(i,1));
+                h = abs(labelsBox(i,4) - labelsBox(i,2));
                 if w ~= 0 && h ~= 0 && w*h > 150
-                    rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','b');                   
+                    rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','r');                   
                 end
                 axis off;
                 
@@ -56,7 +60,7 @@ while ishandle(hFig)
 
         %% Draw setting
         axis off;
-        pause(0.01);        
+        pause(1/30);        
     end
 end
 
