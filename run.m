@@ -13,7 +13,7 @@ while ishandle(hFig)
     if isDone(vid)
         reset(vid);
     end
-    
+    objs = initObject();
     newframe = smooth(grayScale(step(vid)),5,1);
     bg = newframe;
     while ~isDone(vid)
@@ -38,8 +38,9 @@ while ishandle(hFig)
         
         
         labelsBox = findBoxOfLabels(L,num);
-        %disp(size(labelsBox));
+        hists = regionHist(frame,BW,labelsBox);
         
+        % Draw boxxes
         for i = 1:size(labelsBox,1)
             %disp([ i, labelsBox(i,5)]);
             if (labelsBox(i,1) ~= labelsBox(i,3))&& labelsBox(i,5) == 1

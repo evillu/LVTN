@@ -33,7 +33,7 @@ function labels = findBoxOfLabels(bw,num)
                 end
             end
         end
-        disp(labels);
+        %disp(labels);
         % detect any box inside other box or intersect with other box,
         % remove it
         for i = 1:size(labels,1)
