@@ -1,6 +1,8 @@
 close all;
 clear all;
 
+global gId;
+gId = 0;
 ResourcePath = '.\Resource';
 Helper = '.\helper';
 addpath(ResourcePath);
@@ -38,25 +40,45 @@ while ishandle(hFig)
         
         
         labelsBox = findBoxOfLabels(L,num);
-        hists = regionHist(frame,BW,labelsBox);
-        
+        lb = labelsBox(labelsBox(:,5)==1,1:4);
+        hists = regionHist(newframe,BW,lb);
+%         disp(size(hists,1));
+        objs = updateObject(objs,lb,hists);       
         % Draw boxxes
-        for i = 1:size(labelsBox,1)
-            %disp([ i, labelsBox(i,5)]);
-            if (labelsBox(i,1) ~= labelsBox(i,3))&& labelsBox(i,5) == 1
-                x = labelsBox(i,1);
-                y = labelsBox(i,2);
-                w = abs(labelsBox(i,3) - labelsBox(i,1));
-                h = abs(labelsBox(i,4) - labelsBox(i,2));
-                if w ~= 0 && h ~= 0 && w*h > 150
-                    rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','r');                   
-                end
-                axis off;
-                
-                %plot::Rectangle(x, x + w, y, y + h);
+%         for i = 1:size(labelsBox,1)
+%             %disp([ i, labelsBox(i,5)]);
+%             if (labelsBox(i,1) ~= labelsBox(i,3))&& labelsBox(i,5) == 1
+%                 x = labelsBox(i,1);
+%                 y = labelsBox(i,2);
+%                 w = abs(labelsBox(i,3) - labelsBox(i,1));
+%                 h = abs(labelsBox(i,4) - labelsBox(i,2));
+%                 if w ~= 0 && h ~= 0 && w*h > 150
+%                     rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','g');                   
+%                 end
+%                 axis off;
+%                 
+%                 %plot::Rectangle(x, x + w, y, y + h);
+%             end
+%         end
+
+        for i = 1:size(objs,2)
+            %\\disp([ i, labelsBox(i,5)]);
+%             disp(size(objs(i).box,1));
+            box = objs(i).box(end,:);
+%             disp(box);
+%             disp(i);
+%             if box(1) ~= box(3)
+            x = box(1);
+            y = box(2);
+            w = abs(box(3) - box(1));
+            h = abs(box(4) - box(2));
+            if w ~= 0 && h ~= 0 && w*h > 150
+                rectangle('Position',[x y w h], 'LineWidth',1, 'EdgeColor','r');                   
             end
-        end
-        
+
+                %plot::Rectangle(x, x + w, y, y + h);
+%             end
+        end        
         
 
         %% Draw setting
