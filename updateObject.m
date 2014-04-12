@@ -1,6 +1,6 @@
 function objsFinal = updateObject( objs,boxxes,hists )
     ageThresh = 20;
-    histEsp = 0.1;
+    histEsp = 0.001;
     global gId;
 
 
@@ -56,8 +56,7 @@ function objsFinal = updateObject( objs,boxxes,hists )
     function match = histMatch(h1,h2,esp)
         nh1 = h1./sum(h1);
         nh2 = h2./sum(h2);
-        sh = sum(abs(nh1-nh2));
-        match = sh < esp;
+        match = sum((nh1-nh2).^2) < esp;
         disp(match);
     end
 

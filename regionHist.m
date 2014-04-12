@@ -5,7 +5,7 @@ function hists = regionHist(imSrc,bwIm,boxxes)
         partSrc = imSrc(box(2):box(4),box(1):box(3));
         partBW = bwIm(box(2):box(4),box(1):box(3));
         hists(i,:) = imhist(partBW.*partSrc);
-        hists(i:1) = 0;
+        hists(i,1) = 0;
     end
 end
 
