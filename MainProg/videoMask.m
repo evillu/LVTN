@@ -2,6 +2,7 @@ classdef videoMask
     
     properties
         FDM;
+        OFM;
         BDM;
         SI;
         BI;
@@ -22,7 +23,7 @@ classdef videoMask
         function VM = objectMaskExtraction(VM,oldgray,newgray)
             fdthresh = 0.05;
             bdthresh = 0.15;
-            Fthresh = 80;
+            Fthresh = 10;
             FD = abs(newgray - oldgray);
             VM.FDM = FD>fdthresh;
             BD = abs(newgray - VM.BG);
@@ -34,11 +35,30 @@ classdef videoMask
             VM.IOM = VM.BI.*VM.BDM + (~VM.BI).*VM.FDM;
 %             VM.BDM = bwareaopen(VM.BDM&(~VM.IOM),40);
 %             VM.FDM = bwareaopen(VM.FDM,40);  
-            %VM.IOM = bwareaopen(VM.IOM,20);
-            %VM.IOM = bwmorph(VM.IOM,'bridge');
-%             VM.IOM = imclose(VM.IOM,[0 1 1 0;1 1 1 1;1 1 1 1;0 1 1 0]);
-%            VM.IOM = imdilate(VM.IOM,ones(3));
-            %VM.IOM = imfill(VM.IOM,'holes');
+            VM.IOM = bwareaopen(VM.IOM,80);            
+            VM.IOM = imdilate(VM.IOM,strel('line',9,90));
+            VM.IOM = imfill(VM.IOM,'holes');
+        end
+        
+        function VM = movingMask(VM,oldgray,newgray)
+            ofthresh = 0.05;
+            bdthresh = 0.15;
+            Fthresh = 10;
+            [u,v] = LucasKanade2(oldgray,newgray);
+            OF = u.*u + v.*v;
+            VM.OFM = OF>ofthresh;
+            BD = abs(newgray - VM.BG);
+            VM.BDM = BD>bdthresh;
+            VM.SI = (~VM.OFM).*(VM.SI+1);
+            BGChange = VM.BDM.*VM.SI;
+            VM.BG(BGChange == Fthresh) = newgray(BGChange == Fthresh);
+            VM.BI(BGChange == Fthresh) = 1;
+            VM.IOM = VM.BI.*VM.BDM + (~VM.BI).*VM.OFM;
+%             VM.BDM = bwareaopen(VM.BDM&(~VM.IOM),40);
+%             VM.FDM = bwareaopen(VM.FDM,40);  
+            VM.IOM = bwareaopen(VM.IOM,80);            
+            VM.IOM = imdilate(VM.IOM,strel('line',9,90));
+            VM.IOM = imfill(VM.IOM,'holes');
         end
         
         function [iBox, hist] = extractHistAndBox(VM,Im)
@@ -63,7 +83,22 @@ classdef videoMask
             end
             iBox = iBox(still==1,:);
             
-            % Get histogram in box
+            % Join vertical parts boxxes
+%             dv = 10;
+%             still = true(1,size(iBox,1));
+%             for i = 1:size(iBox,1)
+%                 for j = 1:i-1
+%                     if still(j) && boxFragment(iBox(i,:),iBox(j,:),dv)
+%                         iBox(i,:) = boxUnion(iBox(i,:),iBox(j,:));
+%                         still(j) = 0;
+%                     end
+%                 end
+%             end
+%             iBox = iBox(still==1,:); 
+            
+            % Get hue histogram in box
+            Im = rgb2hsv(Im);
+            Im = Im(:,:,1);
             hist = zeros(size(iBox,1),256);
             for i = 1:size(iBox,1)
                 b = iBox(i,:);
@@ -79,6 +114,15 @@ classdef videoMask
 					(b2(2) < b1(2)+b1(4));
             end
             
+            % detect box for human body part fragmented;
+            function r = boxFragment(b1,b2,d)
+                r = b1(3)*b1(4) < b2(3)*b2(4)/3 &&...
+                    (b1(1) > b2(1)-d/2) &&...
+					(b1(1)+b1(3) < b2(1)+b2(3)+d/2) &&...
+					(   (b1(2)-d < b2(2)+b2(4) && b1(2)+b1(4) > b2(2)+b2(4)) ||...
+                        (b1(2)+b1(4)+d > b2(2) && b1(2) < b2(2)));
+            end
+            
             function box = boxUnion(b1,b2)
                 x = min([b1(1) b2(1)]);
                 y = min([b1(2) b2(2)]);
@@ -88,13 +132,14 @@ classdef videoMask
             end
         end
         
-        function bdm = bgDiff(VM,frame,bg)
+        function VM = bgDiff(VM,frame,bg)
             thresh = 0.1;
             diff = abs(frame - bg);
             bdm = diff > thresh;
-            bdm = bwareaopen(bdm,30);
+            bdm = bwareaopen(bdm,20);
 %             bdm = imdilate(bdm,ones(3));
-            bdm = imfill(bdm,'holes');
+            bdm = imclose(bdm,[0 1 1 0;1 1 1 1;1 1 1 1;0 1 1 0]);
+            VM.IOM = imfill(bdm,'holes');
         end
     end
     

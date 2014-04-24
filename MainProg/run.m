@@ -1,5 +1,5 @@
-vid = vision.VideoFileReader('TownCentre.avi');
-bg = im2double(imread('background.tif'));
+vid = vision.VideoFileReader('MVI_8863.avi');
+%bg = im2double(imread('background.tif'));
 
 hFig = figure();
 while ishandle(hFig)
@@ -9,6 +9,7 @@ while ishandle(hFig)
     
     newframe = step(vid);
     newgray = rgb2gray(newframe);
+    bg = newgray;
     
     VM = videoMask(newgray);
     OM = objManager();
@@ -20,21 +21,27 @@ while ishandle(hFig)
             break;
         end
         
+%         res = input('next');
+        
         nframe = nframe + 1;
         
         %oldframe = newframe;
         oldgray = newgray;
         newframe = step(vid);
-        newgray = rgb2gray(newframe);
-%         VM = VM.objectMaskExtraction(oldgray,newgray);
-%         [box,hist] = VM.extractHistAndBox(newgray);        
-%         
-%         if nframe > 10
-%             OM = OM.update(box,hist);
-%         end
+        newgray = im2double(rgb2gray(newframe));
         
-        BDM = VM.bgDiff(newgray,bg);
-        showFrame(OM,BDM,newgray);
+%         VM = VM.bgDiff(newgray,bg);
+%         VM = VM.objectMaskExtraction(oldgray,newgray);
+%         [box,hist] = VM.extractHistAndBox(newframe);
+%         if nframe>10
+%             [OM,boxStat] = OM.update2(box,hist);
+%         end
+        VM = VM.objectMaskExtraction(oldgray,newgray);
+        [box,hist] = VM.extractHistAndBox(newframe);
+        if nframe>15
+            OM = OM.update2(box,hist);
+        end
+        showFrame(VM,OM,newframe);
     end
 end
 
