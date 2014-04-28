@@ -1,6 +1,5 @@
 classdef ObjectManager
-    %OBJECTMANAGER Summary of this class goes here
-    %   Detailed explanation goes here
+    %OBJECTMANAGER store tracked object and operate it
     
     properties
         maxId;
@@ -11,7 +10,7 @@ classdef ObjectManager
     methods
         function OM = ObjectManager()
             OM.maxId = 0;
-            OM.objs = struct (...
+            OM.obj = struct (...
                 'id',{},...
                 'type',{},...
                 'hist',{},...
@@ -25,12 +24,13 @@ classdef ObjectManager
         
         function OM = update(OM,box,hist)
             % magix number
-            DThresh = 50;
+            D2Thresh = 2500;
             AgeThresh = 10;
+            histEsp = 0.01;
             
             % remove aged object
             i = 1;
-            while i <= size(OM.obj,2)
+            while i <= numel(OM.obj)
                 if OM.obj(i).age == AgeThresh
                     % remove object ith
                     % first remove all sub object
@@ -47,7 +47,7 @@ classdef ObjectManager
             end
             
             % predict next location of remain objects
-            for i = 1:size(OM.obj,2)
+            for i = 1:numel(OM.obj)
                 box1 = OM.objs(i).box(end-1,:);
                 box2 = OM.objs(i).box(end,:);
                 OM.objs(i).box(end+1,:) = nextLocation(box1,box2);
@@ -56,13 +56,13 @@ classdef ObjectManager
             end
             
             % distance matrix D
-            D = inf(size(OM.obj,2),size(box,1));
-            for i = 1:size(OM.obj,2)
+            D = inf(numel(OM.obj),size(box,1));
+            for i = 1:numel(OM.obj)
                 for j = size(box,1)
                     D(i,j) = distanceSqr(OM.obj(i).box(end,:),box(j,:));
                 end                
             end
-            D(D<DThresh) = inf;
+            D(D<D2Thresh) = inf;
             
             % distribute objects
             TMmatch = [];
@@ -80,19 +80,26 @@ classdef ObjectManager
                 for c = 1:size(J,2)
                     col = D(:,c);
                     smallest = find(col == min(col));
-                    smallest = smallest(row(smallest) ~= inf);
+                    smallest = smallest(col(smallest) ~= inf);
                     J(smallest,c) = J(smallest,c) + 1;
                 end
                 [r,c] = find(J==2);
                 for i = 1:numel(r)
-                    TMmatch(end+1,1:2) = [r(i), c(i)];
-                    D(r(i),c(i)) = inf;
+                    o = r(i); b = c(i);
+                    if histMatch(OM.obj(o).hist,hist(b),histEsp)
+                        TMmatch(end+1,1:2) = [o, b];
+                    end
+                    D(o,b) = inf;
                 end
                 if isempty(r), break; end
             end
             
-            Tobj = setdiff(1:size(OM.obj,2),TMmatch(:,1));
-            Mobj = setdiff(1:size(box,1),TMmatch(:,2));
+            if ~isempty(TMmatch)
+                Tobj = setdiff(1:numel(OM.obj),(TMmatch(:,1))');
+                Mobj = setdiff(1:size(box,1),(TMmatch(:,2))');
+            end
+            
+            
             
             %% Helper function
             
