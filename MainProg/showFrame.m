@@ -2,6 +2,7 @@ function showFrame(VM,OM,Im)
     %% left axis
     subplot(1,2,1);
     imshow(Im);
+    line(VM.PMask(:,1),VM.PMask(:,2));
     for i = 1:size(OM.objs,2)
         b = OM.objs(i).box(end,:);
         lColor = 'g';
@@ -13,7 +14,11 @@ function showFrame(VM,OM,Im)
     
     %% right axis
     subplot(1,2,2);
-    imshow(VM.BG);
+    imshow(VM.OM);
+    for i = 1:size(VM.iBox,1)
+        box = VM.iBox(i,:);
+        rectangle('Position', box, 'LineWidth', 1, 'EdgeColor', 'r');
+    end
     
     axis off;
     drawnow;
