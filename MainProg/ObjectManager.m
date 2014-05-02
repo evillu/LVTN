@@ -19,12 +19,13 @@ classdef ObjectManager
                 'age',{} );
             OM.hidObj = struct (...
                 'id',{},...
-                'hist',{} );
+                'hist',{},...
+                'box',{} );
         end
         
-        function OM = update(OM,box,hist)
+        function [OM,Mobj] = update(OM,box,hist)
             % magix number
-            D2Thresh = 2500;
+            D2Thresh = 3600;
             AgeThresh = 10;
             histEsp = 0.01;
             
@@ -48,11 +49,11 @@ classdef ObjectManager
             
             % predict next location of remain objects
             for i = 1:numel(OM.obj)
-                box1 = OM.objs(i).box(end-1,:);
-                box2 = OM.objs(i).box(end,:);
-                OM.objs(i).box(end+1,:) = nextLocation(box1,box2);
-                OM.objs(i).hit = 0;
-                OM.objs(i).age = OM.objs(i).age + 1;
+                box1 = OM.obj(i).box(end-1,:);
+                box2 = OM.obj(i).box(end,:);
+                OM.obj(i).box(end+1,:) = nextLocation(box1,box2);
+                OM.obj(i).hit = 0;
+                OM.obj(i).age = OM.obj(i).age + 1;
             end
             
             % distance matrix D
@@ -66,9 +67,11 @@ classdef ObjectManager
             
             % distribute objects
             TMmatch = [];
-            
-            J = zeros(size(D));            
+            Mobj = [];
+            Tobj = [];
+                                    
             while (true)
+                J = zeros(size(D));
                 % find nearest in row
                 for r = 1:size(J,1)
                     row = D(r,:);
@@ -86,7 +89,7 @@ classdef ObjectManager
                 [r,c] = find(J==2);
                 for i = 1:numel(r)
                     o = r(i); b = c(i);
-                    if histMatch(OM.obj(o).hist,hist(b),histEsp)
+                    if histMatch(OM.obj(o).hist,hist(b,:),histEsp)
                         TMmatch(end+1,1:2) = [o, b];
                     end
                     D(o,b) = inf;
@@ -97,9 +100,195 @@ classdef ObjectManager
             if ~isempty(TMmatch)
                 Tobj = setdiff(1:numel(OM.obj),(TMmatch(:,1))');
                 Mobj = setdiff(1:size(box,1),(TMmatch(:,2))');
+            else
+                Tobj = 1:numel(OM.obj);
+                Mobj = 1:size(box,1);
+            end
+%             disp(TMmatch);
+            
+            % Temporary Queue
+            rmObj = false(1,numel(OM.obj));
+            rmHid = [];
+            new = [];
+            save2hid = [];
+            
+            % handle occlusion
+            % Merge objects
+            MergeObject();    
+            HandleMatchingObject();    
+            % Split Objects
+            SplitObject();
+            
+            % create new object
+            CreateNewObject();    
+            
+            % Insert and remove data from tmp queue
+            HandleTempData();	
+            
+            if OM.maxId > 2, pause(1);end
+            
+            %% Core functions
+            function MergeObject()
+                for m = Mobj
+                    merge = [];
+                    % find joining box
+                    for t = Tobj
+                        if childBox(OM.obj(t).box(end,:),box(m,:))
+                            merge(end+1) = t;
+                        end
+                    end
+                    
+                    % merge join box
+                    if numel(merge) == 1
+                        % if there is only 1 join box, consider it is a
+                        % fine tracked object
+                        TMmatch(end+1,1:2) = [merge(1), m];
+                    else
+                        % if there are more than 1 join box, merge them all
+                        % Fisrt create a tmp object
+                        tmpObj = newTmpObj();
+                        % loop for all object to be merge
+                        for ind = merge
+                            rmObj(ind) = 1;
+                            if OM.obj(ind).type == 1
+                                % if this is an ordinary object, save its
+                                % to hidden and add its id
+                                tmpObj.id = union(tmpObj.id,OM.obj(ind).id);
+                                tmpObj.type = tmpObj.type +1;
+                                save2hid = [save2hid,OM.obj(ind)];
+                            else
+                                % if this is a group, union their ids
+                                tmpObj.id = union(tmpObj.id,OM.obj(ind).id);
+                                tmpObj.type = tmpObj.type + OM.obj(ind).type;
+                            end
+                        end
+                        tmpObj.box = [box(m,:);box(m,:)];
+                        tmpObj.hist = hist(m,:);
+                        % push tmp object to temporary queue of New Object
+                        new = [new,tmpObj];
+                    end
+                    % remove merge object to not be acces later
+                    Tobj = setdiff(Tobj,merge);
+                    Mobj = setdiff(Mobj,merge);
+                end
             end
             
+            function SplitObject()
+                for t = Tobj
+                    split = [];
+                    for m = Mobj
+                        if childBox(box(m,:),OM.obj(t).box(end-1,:))
+                            split(end+1) = m;
+                        end
+                    end
+                    disp(['splitting ',num2str(split)]);
+                    
+                    if numel(split) > 1 && OM.obj(t).type == 1
+                        
+                        OM.obj(t).box(end,:) = box(split(1),:);
+                        OM.obj(t).hist = hist(split(1),:);
+                        OM.obj(t).hit = 1;
+                        OM.obj(t).age = 0;
+                        
+                        for ind = split(2:end)
+                            OM.maxId = OM.maxId + 1;
+                            tmpObj = newTmpObj();
+                            tmpObj.id = OM.maxId;
+                            tmpObj.type = 1;
+                            tmpObj.hist = hist(ind,:);
+                            tmpObj.box = [box(ind,:);box(ind,:);];
+                            new = [new,tmpObj];
+                        end
+                    elseif numel(split) > 1
+                        remain = split;
+                        for Mi = split
+                            for Hi = OM.obj(t).id
+                                hidden = OM.hidObj([OM.hidObj.id] == Hi);
+                               if ~isempty(hidden) && histMatch(hist(Mi,:),hidden.hist)
+                                   OM.obj(t).id = setdiff(OM.obj(t).id,hidden.id);
+                                   rmHid(end+1) = hidden.id;
+                                   tmpObj = newTmpObj();
+                                   tmpObj.id = hidden.id;
+                                   tmpObj.type = 1;
+                                   tmpObj.hist = hist(Mi,:);
+                                   tmpObj.box = [hidden.box,box(Mi,:)];
+                                   new = [new,tmpObj];
+                                   remain(remain == hidden.id) = [];
+                                   break;
+                               end
+                            end
+                        end
+                        
+                        if numel(remain) == 1
+                            OM.obj(t).type = numel(OM.obj(t).id);
+                            OM.obj(t).box(end,:) = box(remain,:);
+                            OM.obj(t).hist = hist(remain,:);
+                            OM.obj(t).hit = 1;
+                            OM.obj(t).age = 0;
+                        end
+                        
+                        rmObj(t) = 1;
+                    end
+                    % remove merge object to not be acces later
+                    Tobj = setdiff(Tobj,split);
+                    Mobj = setdiff(Mobj,split);
+                end
+            end
             
+            function CreateNewObject()
+                for m = Mobj
+                    OM.maxId = OM.maxId + 1;
+                    tmpObj = newTmpObj();
+                    tmpObj.id = OM.maxId;
+                    tmpObj.type = 1;
+                    tmpObj.hist = hist(m,:);
+                    tmpObj.box = [box(m,:);box(m,:);];
+                    new = [new,tmpObj];
+                end
+            end
+            
+            function HandleMatchingObject()
+                for iter = 1:size(TMmatch,1)
+                    track = TMmatch(iter,1);
+                    mesure = TMmatch(iter,2);
+                    OM.obj(track).box(end,:) = box(mesure,:);
+                    OM.obj(track).hist = hist(mesure,:);
+                    OM.obj(track).hit = 1;
+                    OM.obj(track).age = 0;
+                end
+            end
+            
+            function HandleTempData()
+                % Remove deleted objects
+                iter = 1;
+                for rm = rmObj
+                    if rm == 1
+                        disp(['remove object ',num2str(OM.obj(iter).id)]);
+                        OM.obj(iter) = [];
+                        iter = iter-1;
+                    end
+                    iter = iter+1;
+                end
+                
+                % Remove deleted hidden objects
+                for hid = rmHid
+                    disp(['remove hidden ',num2str(hid)]);
+                    OM.hidObj([OM.hidObj.id] == hid) = [];
+                end
+                
+                % Insert new object from tmp queue
+                for newObj = new
+                    OM.obj(end+1) = newObj;
+                end
+                
+                % Inserthidden object from tmp queue
+                for hObj = save2hid
+                    indx = numel(OM.hidObj)+1;
+                    OM.hidObj(indx).id = hObj.id;
+                    OM.hidObj(indx).hist = hObj.hist;
+                    OM.hidObj(indx).box = hObj.box;
+                end
+            end
             
             %% Helper function
             
@@ -124,6 +313,31 @@ classdef ObjectManager
                 x2 = round(b2(1)+b2(3)/2);
                 y2 = round(b2(2)+b2(4)/2);
                 d = (x1-x2)^2 + (y1-y2)^2;
+            end
+            
+            % return true if te centre of b1 is within b2
+            function r = childBox(b1,b2)
+                cx1 = round(b1(1)+b1(3)/2);
+                cy1 = round(b1(2)+b1(4)/2);
+                r = cx1>b2(1) && cx1<b2(1)+b2(3) &&...
+                    cy1>b2(2) && cy1<b2(2)+b2(4);
+            end
+            
+            % return a new template object
+            function o = newTmpObj()
+                o.id = [];
+                o.type = 0;
+                o.hist = [];
+                o.box = [];
+                o.hit = 1;                
+                o.age = 0;
+            end
+            
+            function save2hidden(obj)
+                ind = numel(save2hid)+1;
+                save2hid(ind).id = obj.id;
+                save2hid(ind).hist = obj.hist;
+                save2hid(ind).box = obj.box;
             end
         end
     end

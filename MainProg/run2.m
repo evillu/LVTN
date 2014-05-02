@@ -1,12 +1,11 @@
 vid = vision.VideoFileReader('MVI_8863.avi');
-%bg = im2double(imread('background.tif'));
-
 hFig = figure();
 
+% geta 1st frame to init data
 newframe = step(vid);
 
 BA = BlobAnalys('bgExtract',newframe);
-OM = objManager();
+OM = ObjectManager();
 
 nframe = 1;
 
@@ -22,10 +21,8 @@ while ~isDone(vid)
     
     BA = BA.ExtractMask(oldframe, newframe);
     [BA, box,hist] = BA.extractHistAndBox(newframe);
-    %         [box,hist] = VM.extractHistAndBox(newframe);
-    %         if nframe>15
-    %             OM = OM.update2(box,hist);
-    %         end
+    [OM,Mobj] = OM.update(box,hist);
+    
     showFrame(BA,OM,newframe);
 end
 
