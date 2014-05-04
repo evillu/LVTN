@@ -4,7 +4,7 @@ function showFrame(VM,OM,Im)
     imshow(Im);
     line(VM.PMask(:,1),VM.PMask(:,2));
     for i = 1:numel(OM.obj)
-        b = OM.objs(i).box(end,:);
+        b = OM.obj(i).box(end,:);
         lColor = 'g';
         if OM.obj(i).type > 1, lColor = 'r'; end
         if ~OM.obj(i).hit, lColor = 'b'; end

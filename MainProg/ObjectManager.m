@@ -56,6 +56,13 @@ classdef ObjectManager
                 OM.obj(i).age = OM.obj(i).age + 1;
             end
             
+            % predict next location of hidden objects
+            for i = 1:numel(OM.hidObj)
+                box1 = OM.hidObj(i).box(end-1,:);
+                box2 = OM.hidObj(i).box(end,:);
+                OM.hidObj(i).box(end+1,:) = nextLocation(box1,box2);
+            end
+            
             % distance matrix D
             D = inf(numel(OM.obj),size(box,1));
             for i = 1:numel(OM.obj)
@@ -125,7 +132,7 @@ classdef ObjectManager
             % Insert and remove data from tmp queue
             HandleTempData();	
             
-            if OM.maxId > 2, pause(1);end
+%             if OM.maxId > 2, pause(1);end
             
             %% Core functions
             function MergeObject()
@@ -143,7 +150,7 @@ classdef ObjectManager
                         % if there is only 1 join box, consider it is a
                         % fine tracked object
                         TMmatch(end+1,1:2) = [merge(1), m];
-                    else
+                    elseif numel(merge) > 1
                         % if there are more than 1 join box, merge them all
                         % Fisrt create a tmp object
                         tmpObj = newTmpObj();
@@ -153,7 +160,7 @@ classdef ObjectManager
                             if OM.obj(ind).type == 1
                                 % if this is an ordinary object, save its
                                 % to hidden and add its id
-                                tmpObj.id = union(tmpObj.id,OM.obj(ind).id);
+                                tmpObj.id = unique([OM.obj(ind).id,tmpObj.id]);
                                 tmpObj.type = tmpObj.type +1;
                                 save2hid = [save2hid,OM.obj(ind)];
                             else
@@ -166,10 +173,11 @@ classdef ObjectManager
                         tmpObj.hist = hist(m,:);
                         % push tmp object to temporary queue of New Object
                         new = [new,tmpObj];
-                    end
-                    % remove merge object to not be acces later
-                    Tobj = setdiff(Tobj,merge);
-                    Mobj = setdiff(Mobj,merge);
+                        
+                        % remove merge object to not be acces later
+                        Tobj = setdiff(Tobj,merge);
+                        Mobj = setdiff(Mobj,m);
+                    end                    
                 end
             end
             
@@ -180,10 +188,10 @@ classdef ObjectManager
                         if childBox(box(m,:),OM.obj(t).box(end-1,:))
                             split(end+1) = m;
                         end
-                    end
-                    disp(['splitting ',num2str(split)]);
+                    end                    
                     
                     if numel(split) > 1 && OM.obj(t).type == 1
+                        disp(['splitting ',num2str(split)]);
                         
                         OM.obj(t).box(end,:) = box(split(1),:);
                         OM.obj(t).hist = hist(split(1),:);
@@ -198,22 +206,24 @@ classdef ObjectManager
                             tmpObj.hist = hist(ind,:);
                             tmpObj.box = [box(ind,:);box(ind,:);];
                             new = [new,tmpObj];
-                        end
+                        end  
                     elseif numel(split) > 1
+                        disp(['splitting ',num2str(split)]);
                         remain = split;
                         for Mi = split
                             for Hi = OM.obj(t).id
                                 hidden = OM.hidObj([OM.hidObj.id] == Hi);
-                               if ~isempty(hidden) && histMatch(hist(Mi,:),hidden.hist)
+                               if ~isempty(hidden) && histMatch(hist(Mi,:),hidden.hist,histEsp)                                   
                                    OM.obj(t).id = setdiff(OM.obj(t).id,hidden.id);
+                                   disp(['split remain: ',num2str(OM.obj(t).id)]);
                                    rmHid(end+1) = hidden.id;
                                    tmpObj = newTmpObj();
                                    tmpObj.id = hidden.id;
                                    tmpObj.type = 1;
                                    tmpObj.hist = hist(Mi,:);
-                                   tmpObj.box = [hidden.box,box(Mi,:)];
+                                   tmpObj.box = [hidden.box;box(Mi,:)];
                                    new = [new,tmpObj];
-                                   remain(remain == hidden.id) = [];
+                                   remain(remain == Mi) = [];
                                    break;
                                end
                             end
@@ -225,12 +235,12 @@ classdef ObjectManager
                             OM.obj(t).hist = hist(remain,:);
                             OM.obj(t).hit = 1;
                             OM.obj(t).age = 0;
+                        else                        
+                            rmObj(t) = 1;
                         end
-                        
-                        rmObj(t) = 1;
                     end
                     % remove merge object to not be acces later
-                    Tobj = setdiff(Tobj,split);
+                    Tobj = setdiff(Tobj,t);
                     Mobj = setdiff(Mobj,split);
                 end
             end
@@ -243,7 +253,8 @@ classdef ObjectManager
                     tmpObj.type = 1;
                     tmpObj.hist = hist(m,:);
                     tmpObj.box = [box(m,:);box(m,:);];
-                    new = [new,tmpObj];
+                    new = [new,tmpObj]; 
+                    disp(['create : ',num2str(tmpObj.id)]);
                 end
             end
             
@@ -279,6 +290,7 @@ classdef ObjectManager
                 % Insert new object from tmp queue
                 for newObj = new
                     OM.obj(end+1) = newObj;
+%                     disp(['create : ',num2str(newObj.id)]);
                 end
                 
                 % Inserthidden object from tmp queue
