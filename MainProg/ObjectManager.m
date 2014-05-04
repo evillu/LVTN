@@ -66,7 +66,7 @@ classdef ObjectManager
             % distance matrix D
             D = inf(numel(OM.obj),size(box,1));
             for i = 1:numel(OM.obj)
-                for j = size(box,1)
+                for j = 1:size(box,1)
                     D(i,j) = distanceSqr(OM.obj(i).box(end,:),box(j,:));
                 end                
             end
@@ -160,7 +160,7 @@ classdef ObjectManager
                             if OM.obj(ind).type == 1
                                 % if this is an ordinary object, save its
                                 % to hidden and add its id
-                                tmpObj.id = unique([OM.obj(ind).id,tmpObj.id]);
+                                tmpObj.id = mergeArray(OM.obj(ind).id,tmpObj.id);
                                 tmpObj.type = tmpObj.type +1;
                                 save2hid = [save2hid,OM.obj(ind)];
                             else
@@ -350,6 +350,13 @@ classdef ObjectManager
                 save2hid(ind).id = obj.id;
                 save2hid(ind).hist = obj.hist;
                 save2hid(ind).box = obj.box;
+            end
+            
+            function m = mergeArray(a1,a2)
+                m = zeros(1,numel(a1)+numel(a2));
+                m(1:numel(a1)) = a1;
+                m(numel(a1)+1:numel(a1)+numel(a2)) = a2;
+                m = unique(m);
             end
         end
     end
