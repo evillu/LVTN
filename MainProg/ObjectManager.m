@@ -134,6 +134,14 @@ classdef ObjectManager
             
 %             if OM.maxId > 2, pause(1);end
             
+            % get last 10 position
+            for i = 1:numel(OM.obj)
+                if size(OM.obj(i).box,1)>20
+                    OM.obj(i).box = OM.obj(i).box(end-19:end,:);
+                end
+            end
+            
+
             %% Core functions
             function MergeObject()
                 for m = Mobj

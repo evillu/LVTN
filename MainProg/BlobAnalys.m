@@ -31,8 +31,8 @@ classdef BlobAnalys
         
         function BA = ExtractMask(BA, oldframe, newframe)
             bgThresh = 0.1;
-            FDThresh = 10;
-            smallArea = 80;
+            FDThresh = 30;
+            smallArea = 120;
             
             if strcmp(BA.Method,'bgExtract')
                 BA.OM = BGExtract();
@@ -68,6 +68,7 @@ classdef BlobAnalys
                 BA.BI(BGChange == FDThresh) = 1;
                 OM = BA.BI.*BA.BDM + (~BA.BI).*BA.FDM;
                 OM = bwareaopen(OM,smallArea);
+                OM = imfill(OM,'holes');
             end
         end 
         
