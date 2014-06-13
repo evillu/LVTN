@@ -9,12 +9,12 @@ function showFrame(VM,OM,Im)
         if OM.obj(i).type > 1, lColor = 'r'; end
         if ~OM.obj(i).hit, lColor = 'b'; end
         rectangle('Position', b, 'LineWidth', 1, 'EdgeColor', lColor);
-        text(b(1), b(2), num2str(OM.obj(i).id),'Color','y');
+        text(b(1), b(2)-5, num2str(OM.obj(i).id),'Color','y','FontSize',14,'FontWeight','bold');
     end
     
     %% right axis
     subplot(1,2,2);
-    imshow(VM.OM);
+    imshow(VM.IOM);
     for i = 1:size(VM.iBox,1)
         box = VM.iBox(i,:);
         rectangle('Position', box, 'LineWidth', 1, 'EdgeColor', 'r');
